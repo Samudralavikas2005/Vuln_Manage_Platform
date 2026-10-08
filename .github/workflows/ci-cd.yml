@@ -1,0 +1,42 @@
+name: SSDLC Automated CI/CD & Security Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  security-audit-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Project Dependencies
+        run: npm ci
+
+      - name: SAST & Dependency Security Audit
+        run: npm audit --audit-level=high
+
+      - name: Execute Automated Unit Tests
+        run: npm test
+
+      - name: Execute API Integration Tests
+        run: |
+          node server.js &
+          sleep 3
+          npm run test:integration
+
+      - name: Execute Input Boundary Fuzzing Test
+        run: npm run fuzz
+
+      - name: Build Docker Container Image
+        run: docker build -t vuln-platform:${{ github.sha }} .
