@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  vuln-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vuln-platform-app
+    ports:
+      - "9090:3000"
+    volumes:
+      - ./db:/app/db
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
