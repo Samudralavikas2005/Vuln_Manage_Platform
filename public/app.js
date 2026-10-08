@@ -1,5 +1,5 @@
 /**
- * Client-Side JavaScript Logic with Dynamic Role-Based UI Rendering
+ * Client-Side JavaScript Logic with Dynamic Role-Based UI & Admin User Management
  */
 
 let authToken = localStorage.getItem('token') || '';
@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
   document.getElementById('registerAssetForm').addEventListener('submit', handleRegisterAsset);
   document.getElementById('importVulnForm').addEventListener('submit', handleImportVuln);
+  
+  const createUserForm = document.getElementById('createUserForm');
+  if (createUserForm) createUserForm.addEventListener('submit', handleCreateUser);
 });
 
 async function handleLogin(e) {
@@ -79,12 +82,20 @@ function renderNavigationTabs() {
 
   let tabsHTML = '';
 
-  if (role === 'REMEDIATION_ENGINEER') {
+  if (role === 'SYSTEM_ADMIN') {
+    tabsHTML = `
+      <button class="nav-btn active" onclick="switchTab('adminTab', event)">👑 System Admin Control Panel</button>
+      <button class="nav-btn" onclick="switchTab('dashboardTab', event)">Dashboard & Assets</button>
+      <button class="nav-btn" onclick="switchTab('vulnerabilitiesTab', event)">Vulnerabilities & Workflow</button>
+      <button class="nav-btn" onclick="switchTab('managementTab', event)">Security Management</button>
+      <button class="nav-btn" onclick="switchTab('auditTab', event)">Audit Trail (DB2)</button>
+    `;
+  } else if (role === 'REMEDIATION_ENGINEER') {
     tabsHTML = `
       <button class="nav-btn active" onclick="switchTab('remediationTab', event)">🛠️ Remediation Workstation</button>
       <button class="nav-btn" onclick="switchTab('dashboardTab', event)">Infrastructure Assets (DB1)</button>
     `;
-  } else if (role === 'SECURITY_LEAD' || role === 'SYSTEM_ADMIN') {
+  } else if (role === 'SECURITY_LEAD') {
     tabsHTML = `
       <button class="nav-btn active" onclick="switchTab('dashboardTab', event)">Dashboard & Assets</button>
       <button class="nav-btn" onclick="switchTab('vulnerabilitiesTab', event)">Vulnerabilities & Workflow</button>
@@ -102,7 +113,9 @@ function renderNavigationTabs() {
   nav.innerHTML = tabsHTML;
 
   // Auto load first tab
-  if (role === 'REMEDIATION_ENGINEER') {
+  if (role === 'SYSTEM_ADMIN') {
+    switchTab('adminTab');
+  } else if (role === 'REMEDIATION_ENGINEER') {
     switchTab('remediationTab');
   } else {
     switchTab('dashboardTab');
@@ -121,6 +134,7 @@ function switchTab(tabId, evt) {
     if (activeBtn) activeBtn.classList.add('active');
   }
 
+  if (tabId === 'adminTab') loadAdminUsers();
   if (tabId === 'dashboardTab') loadDashboard();
   if (tabId === 'remediationTab') loadRemediationWorkstation();
   if (tabId === 'vulnerabilitiesTab') loadVulnerabilities();
@@ -138,6 +152,66 @@ async function fetchAPI(url, options = {}) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'API Request Failed');
   return data;
+}
+
+/**
+ * System Admin Control Panel - User Management
+ */
+async function loadAdminUsers() {
+  try {
+    const users = await fetchAPI('/api/admin/users');
+    const tbody = document.getElementById('usersTableBody');
+
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td><code>${u.id}</code></td>
+        <td><strong>${u.username}</strong></td>
+        <td>${u.name}</td>
+        <td><span class="role-pill">${u.role}</span></td>
+        <td><span class="badge badge-low">${u.status}</span></td>
+        <td>
+          <button class="btn btn-secondary" onclick="adminModifyUserRole('${u.username}')">Modify Role</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function handleCreateUser(e) {
+  e.preventDefault();
+  const username = document.getElementById('newUsername').value;
+  const name = document.getElementById('newName').value;
+  const role = document.getElementById('newRole').value;
+
+  try {
+    await fetchAPI('/api/admin/users', {
+      method: 'POST',
+      body: JSON.stringify({ username, name, role })
+    });
+    alert(`Success: User account '${username}' created in DB1 with role ${role}`);
+    document.getElementById('createUserForm').reset();
+    loadAdminUsers();
+  } catch (err) {
+    alert(`Account Creation Error: ${err.message}`);
+  }
+}
+
+async function adminModifyUserRole(username) {
+  const newRole = prompt(`Select new role for user '${username}' (SYSTEM_ADMIN, SECURITY_LEAD, REMEDIATION_ENGINEER, SECURITY_AUDITOR):`);
+  if (!newRole) return;
+
+  try {
+    await fetchAPI('/api/admin/users/role', {
+      method: 'PATCH',
+      body: JSON.stringify({ username, newRole: newRole.toUpperCase() })
+    });
+    alert(`Success: User '${username}' role updated to ${newRole.toUpperCase()} in DB1!`);
+    loadAdminUsers();
+  } catch (err) {
+    alert(`Role Update Error: ${err.message}`);
+  }
 }
 
 async function loadDashboard() {
@@ -166,9 +240,6 @@ async function loadDashboard() {
   }
 }
 
-/**
- * Dedicated Remediation Workstation View for Remediation Engineers
- */
 async function loadRemediationWorkstation() {
   try {
     const vulns = await fetchAPI('/api/vulnerabilities');

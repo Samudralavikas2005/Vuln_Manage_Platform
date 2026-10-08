@@ -1,6 +1,5 @@
 /**
- * Database Module: DB1 (Assets & Vulnerabilities) and DB2 (Tamper-Evident Audit Logs)
- * Uses persistent SQLite database files.
+ * Database Module: DB1 (Assets, Vulnerabilities & Users) and DB2 (Tamper-Evident Audit Logs)
  */
 
 const fs = require('fs');
@@ -20,6 +19,17 @@ const db2 = new sqlite3.Database(DB2_PATH);
 
 // Initialize DB1 Tables
 db1.serialize(() => {
+  db1.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      status TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    )
+  `);
+
   db1.run(`
     CREATE TABLE IF NOT EXISTS assets (
       id TEXT PRIMARY KEY,
@@ -50,7 +60,18 @@ db1.serialize(() => {
     )
   `);
 
-  // Seed sample DB1 data if empty
+  // Seed sample Users in DB1
+  db1.get("SELECT COUNT(*) AS count FROM users", (err, row) => {
+    if (!err && row.count === 0) {
+      const now = new Date().toISOString();
+      db1.run(`INSERT INTO users VALUES ('usr-admin', 'admin', 'System Administrator', 'SYSTEM_ADMIN', 'ACTIVE', '${now}')`);
+      db1.run(`INSERT INTO users VALUES ('usr-lead', 'sec_lead', 'Lead Security Analyst', 'SECURITY_LEAD', 'ACTIVE', '${now}')`);
+      db1.run(`INSERT INTO users VALUES ('usr-eng', 'rem_eng', 'Remediation Specialist', 'REMEDIATION_ENGINEER', 'ACTIVE', '${now}')`);
+      db1.run(`INSERT INTO users VALUES ('usr-auditor', 'auditor', 'Compliance Auditor', 'SECURITY_AUDITOR', 'ACTIVE', '${now}')`);
+    }
+  });
+
+  // Seed sample Assets & Vulnerabilities in DB1
   db1.get("SELECT COUNT(*) AS count FROM assets", (err, row) => {
     if (!err && row.count === 0) {
       db1.run(`INSERT INTO assets VALUES ('AST-001', 'Production Auth Server', '192.168.1.50', 'SERVER', 'SecOps Team', 'CRITICAL', 'ACTIVE', '${new Date().toISOString()}')`);
@@ -79,7 +100,7 @@ db2.serialize(() => {
   `);
 });
 
-// Async Database Helper Functions
+// Helper Functions
 const db1Query = (sql, params = []) => new Promise((resolve, reject) => {
   db1.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows));
 });

@@ -19,7 +19,7 @@
     </div>
 
     <div class="db-badges">
-      <span class="badge badge-secondary" style="font-size: 0.7rem;">DB1: SQLite (Assets & Vulns)</span>
+      <span class="badge badge-secondary" style="font-size: 0.7rem;">DB1: SQLite (Assets, Vulns, Users)</span>
       <span class="badge badge-secondary" style="font-size: 0.7rem;">DB2: SQLite (HMAC Audit Trail)</span>
     </div>
 
@@ -44,10 +44,10 @@
       <div class="form-group">
         <label for="usernameSelect">User Role Account</label>
         <select id="usernameSelect">
+          <option value="admin">admin (System Administrator)</option>
           <option value="sec_lead">sec_lead (Security Analyst/Lead)</option>
           <option value="rem_eng">rem_eng (Remediation Engineer)</option>
           <option value="auditor">auditor (Compliance Auditor)</option>
-          <option value="admin">admin (System Administrator)</option>
         </select>
       </div>
 
@@ -69,6 +69,60 @@
 
   <!-- MAIN CONTAINER -->
   <main id="appContainer" class="container hidden">
+
+    <!-- TAB: SYSTEM ADMIN USER MANAGEMENT (Visible for SYSTEM_ADMIN) -->
+    <section id="adminTab" class="tab-content hidden">
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        
+        <!-- Users Table -->
+        <div class="glass-panel" style="padding: 1.5rem;">
+          <h3 style="margin-bottom: 1rem;">👑 System User Accounts & Role Assignments (DB1 Store)</h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>User ID</th>
+                  <th>Username</th>
+                  <th>Full Name</th>
+                  <th>Assigned Role</th>
+                  <th>Account Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <!-- JS Populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Create User Form -->
+        <div class="glass-panel" style="padding: 1.5rem;">
+          <h3 style="margin-bottom: 1rem;">Create System Account</h3>
+          <form id="createUserForm">
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="newUsername" required placeholder="e.g. jsmith_sec">
+            </div>
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" id="newName" required placeholder="John Smith">
+            </div>
+            <div class="form-group">
+              <label>Assign Role</label>
+              <select id="newRole">
+                <option value="SECURITY_LEAD">SECURITY_LEAD</option>
+                <option value="REMEDIATION_ENGINEER">REMEDIATION_ENGINEER</option>
+                <option value="SECURITY_AUDITOR">SECURITY_AUDITOR</option>
+                <option value="SYSTEM_ADMIN">SYSTEM_ADMIN</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account in DB1</button>
+          </form>
+        </div>
+
+      </div>
+    </section>
 
     <!-- TAB 1: DASHBOARD & ASSETS -->
     <section id="dashboardTab" class="tab-content">
@@ -114,7 +168,7 @@
       </div>
     </section>
 
-    <!-- TAB 2: REMEDIATION ENGINEER WORKSTATION (Dedicated view for REMEDIATION_ENGINEER) -->
+    <!-- TAB 2: REMEDIATION ENGINEER WORKSTATION -->
     <section id="remediationTab" class="tab-content hidden">
       <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
         <h3 style="margin-bottom: 0.5rem;">🛠️ Remediation Engineer Workstation</h3>
@@ -144,7 +198,7 @@
       </div>
     </section>
 
-    <!-- TAB 3: VULNERABILITIES & WORKFLOW (For Sec Lead / Admin / Auditor) -->
+    <!-- TAB 3: VULNERABILITIES & WORKFLOW -->
     <section id="vulnerabilitiesTab" class="tab-content hidden">
       <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
         <h3 style="margin-bottom: 1rem;">Vulnerability Tracking & State Engine (DB1 Store)</h3>
@@ -170,7 +224,7 @@
       </div>
     </section>
 
-    <!-- TAB 4: SECURITY LEAD MANAGEMENT (For Sec Lead & Admin only) -->
+    <!-- TAB 4: SECURITY LEAD MANAGEMENT -->
     <section id="managementTab" class="tab-content hidden">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
         
@@ -242,7 +296,7 @@
       </div>
     </section>
 
-    <!-- TAB 5: AUDIT TRAIL & INTEGRITY (For Auditor, Sec Lead, Admin) -->
+    <!-- TAB 5: AUDIT TRAIL & INTEGRITY -->
     <section id="auditTab" class="tab-content hidden">
       <div class="glass-panel" style="padding: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">

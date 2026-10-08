@@ -6,14 +6,15 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { generateToken, USERS, ROLES } = require('../src/auth');
+const { generateToken, getUsersFromDB, ROLES } = require('../src/auth');
 const { WORKFLOW_STATES, WorkflowEngine } = require('../src/workflow');
 const auditLogger = require('../src/auditLogger');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../src/auth');
 
-test('Unit Test 1: JWT Token Generation & Verification', () => {
-  const user = USERS[0];
+test('Unit Test 1: JWT Token Generation & Verification', async () => {
+  const users = await getUsersFromDB();
+  const user = users[0];
   const token = generateToken(user);
   assert.ok(token, 'Token should be generated');
 

@@ -8,7 +8,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
-const { generateToken, authenticateToken, authorizeRoles, ROLES, USERS } = require('./src/auth');
+const { generateToken, authenticateToken, authorizeRoles, ROLES, getUsersFromDB, findUserByUsername, createUserInDB, updateUserRoleInDB } = require('./src/auth');
 const { vulnerabilityService } = require('./src/vulnerabilityService');
 const auditLogger = require('./src/auditLogger');
 const { WORKFLOW_STATES } = require('./src/workflow');
@@ -40,7 +40,7 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(400).json({ error: 'Username and password are required' });
   }
 
-  const user = USERS.find(u => u.username === username);
+  const user = await findUserByUsername(username);
   if (!user) {
     await auditLogger.logEvent('ANONYMOUS', 'AUTH_FAILED', 'LOGIN', { username, reason: 'Invalid username' }, req.ip);
     return res.status(401).json({ error: 'Invalid authentication credentials' });
@@ -54,6 +54,57 @@ app.post('/api/auth/login', async (req, res) => {
     token,
     user: { id: user.id, username: user.username, role: user.role, name: user.name }
   });
+});
+
+// --- ADMIN USER MANAGEMENT APIS ---
+app.get('/api/admin/users', authenticateToken, authorizeRoles(ROLES.SYSTEM_ADMIN), async (req, res) => {
+  try {
+    const users = await getUsersFromDB();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/users', authenticateToken, authorizeRoles(ROLES.SYSTEM_ADMIN), async (req, res) => {
+  try {
+    const { username, name, role } = req.body;
+    if (!username || !name || !role) {
+      return res.status(400).json({ error: 'Username, name, and role are required' });
+    }
+    if (!ROLES[role]) {
+      return res.status(400).json({ error: `Invalid role '${role}'. Allowed: [${Object.keys(ROLES).join(', ')}]` });
+    }
+
+    const existing = await findUserByUsername(username);
+    if (existing) {
+      return res.status(400).json({ error: `Username '${username}' is already registered.` });
+    }
+
+    const newUser = await createUserInDB(username, name, role);
+    await auditLogger.logEvent(req.user.username, 'USER_CREATED', newUser.username, { role: newUser.role, name: newUser.name });
+    res.status(201).json(newUser);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.patch('/api/admin/users/role', authenticateToken, authorizeRoles(ROLES.SYSTEM_ADMIN), async (req, res) => {
+  try {
+    const { username, newRole } = req.body;
+    if (!username || !newRole) {
+      return res.status(400).json({ error: 'Username and newRole are required' });
+    }
+    if (!ROLES[newRole]) {
+      return res.status(400).json({ error: `Invalid role '${newRole}'.` });
+    }
+
+    const updated = await updateUserRoleInDB(username, newRole);
+    await auditLogger.logEvent(req.user.username, 'USER_ROLE_MODIFIED', username, { newRole });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // --- ASSET MANAGEMENT APIS ---

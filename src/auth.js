@@ -1,8 +1,9 @@
 /**
- * Authentication and RBAC Authorization Middleware
+ * Authentication and RBAC Authorization Middleware (Integrated with DB1 SQLite Users)
  */
 
 const jwt = require('jsonwebtoken');
+const { db1Query, db1Run } = require('./db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ssdlc_vulnerability_platform_jwt_secret_2026';
 
@@ -13,12 +14,27 @@ const ROLES = {
   SECURITY_AUDITOR: 'SECURITY_AUDITOR'
 };
 
-const USERS = [
-  { id: 'usr-admin', username: 'admin', passwordHash: '$2a$10$wT8...fake', role: ROLES.SYSTEM_ADMIN, name: 'System Administrator' },
-  { id: 'usr-lead', username: 'sec_lead', passwordHash: '$2a$10$wT8...fake', role: ROLES.SECURITY_LEAD, name: 'Lead Security Analyst' },
-  { id: 'usr-eng', username: 'rem_eng', passwordHash: '$2a$10$wT8...fake', role: ROLES.REMEDIATION_ENGINEER, name: 'Remediation Specialist' },
-  { id: 'usr-auditor', username: 'auditor', passwordHash: '$2a$10$wT8...fake', role: ROLES.SECURITY_AUDITOR, name: 'Compliance Auditor' }
-];
+async function getUsersFromDB() {
+  return await db1Query("SELECT * FROM users ORDER BY id ASC");
+}
+
+async function findUserByUsername(username) {
+  const rows = await db1Query("SELECT * FROM users WHERE username = ?", [username]);
+  return rows.length > 0 ? rows[0] : null;
+}
+
+async function createUserInDB(username, name, role) {
+  const countRows = await db1Query("SELECT COUNT(*) AS count FROM users");
+  const userId = `usr-${String(countRows[0].count + 1).padStart(3, '0')}`;
+  const now = new Date().toISOString();
+  await db1Run("INSERT INTO users VALUES (?, ?, ?, ?, 'ACTIVE', ?)", [userId, username, name, role, now]);
+  return { id: userId, username, name, role, status: 'ACTIVE', createdAt: now };
+}
+
+async function updateUserRoleInDB(username, newRole) {
+  await db1Run("UPDATE users SET role = ? WHERE username = ?", [newRole, username]);
+  return await findUserByUsername(username);
+}
 
 function generateToken(user) {
   return jwt.sign(
@@ -59,7 +75,10 @@ function authorizeRoles(...allowedRoles) {
 module.exports = {
   JWT_SECRET,
   ROLES,
-  USERS,
+  getUsersFromDB,
+  findUserByUsername,
+  createUserInDB,
+  updateUserRoleInDB,
   generateToken,
   authenticateToken,
   authorizeRoles
