@@ -1,6 +1,6 @@
 /**
  * Automated Unit Test Suite
- * Tests Auth JWT, State Machine, and Severity Calculation
+ * Tests Auth JWT, State Machine, and SQLite Audit Logger
  */
 
 const test = require('node:test');
@@ -39,11 +39,11 @@ test('Unit Test 2: Workflow State Machine Allowed Transitions', () => {
   assert.match(invalidCheck.reason, /Workflow Integrity Violation/);
 });
 
-test('Unit Test 3: Tamper-Evident HMAC Audit Logger Chain', () => {
-  auditLogger.logEvent('test_user', 'TEST_ACTION', 'RESOURCE-1', { foo: 'bar' });
-  auditLogger.logEvent('test_user_2', 'TEST_ACTION_2', 'RESOURCE-2', { foo: 'baz' });
+test('Unit Test 3: Tamper-Evident HMAC Audit Logger Chain (DB2 SQLite)', async () => {
+  await auditLogger.logEvent('test_user', 'TEST_ACTION', 'RESOURCE-1', { foo: 'bar' });
+  await auditLogger.logEvent('test_user_2', 'TEST_ACTION_2', 'RESOURCE-2', { foo: 'baz' });
 
-  const integrity = auditLogger.verifyChainIntegrity();
+  const integrity = await auditLogger.verifyChainIntegrity();
   assert.strictEqual(integrity.intact, true);
   assert.ok(integrity.count >= 2);
 });

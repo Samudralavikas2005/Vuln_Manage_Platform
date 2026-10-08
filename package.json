@@ -10,7 +10,12 @@
     "test:integration": "node --test tests/integration.test.js",
     "fuzz": "node tests/fuzz.js"
   },
-  "keywords": ["security", "vulnerability-management", "ssdlc", "cvss"],
+  "keywords": [
+    "security",
+    "vulnerability-management",
+    "ssdlc",
+    "cvss"
+  ],
   "author": "Security Engineering Team",
   "license": "MIT",
   "dependencies": {
@@ -20,6 +25,7 @@
     "express-rate-limit": "^7.2.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "sqlite3": "^6.0.1",
     "winston": "^3.13.0",
     "zod": "^3.22.4"
   }

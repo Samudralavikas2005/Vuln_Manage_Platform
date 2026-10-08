@@ -1,0 +1,427 @@
+================================================================================
+          VULNERABILITY MANAGEMENT PLATFORM - DIAGRAM CODES FOR DRAW.IO
+================================================================================
+
+HOW TO USE IN DRAW.IO (app.diagrams.net):
+1. Open draw.io (https://app.diagrams.net).
+2. Go to top menu: Arrange -> Insert -> Advanced -> Mermaid (or PlantUML).
+3. Copy and paste the corresponding code block below into draw.io.
+4. Click "Insert" and draw.io will automatically generate and render the diagram.
+
+================================================================================
+1. ENTITY-RELATIONSHIP DIAGRAM (ERD)
+================================================================================
+
+--- MERMAID CODE (Draw.io -> Insert -> Advanced -> Mermaid) ---
+erDiagram
+    USER ||--o{ AUDIT_LOG : generates
+    USER ||--o{ ASSET : owns
+    ASSET ||--o{ VULNERABILITY : contains
+    USER ||--o{ VULNERABILITY : assigned_to
+
+    USER {
+        string user_id PK
+        string username
+        string password_hash
+        string role_id FK
+    }
+    ASSET {
+        string asset_id PK
+        string name
+        string ip_address
+        string type
+        string criticality
+    }
+    VULNERABILITY {
+        string vuln_id PK
+        string asset_id FK
+        string cve_id
+        string title
+        float cvss_score
+        string severity
+        string status
+        string assigned_to FK
+    }
+    AUDIT_LOG {
+        string log_id PK
+        string actor_username FK
+        string action
+        string target_resource
+        string details_json
+        string hmac_hash
+        string prev_hash
+    }
+
+--- PLANTUML CODE (Draw.io -> Insert -> Advanced -> PlantUML) ---
+@startuml
+skinparam handwritten false
+skinparam monochrome false
+
+entity "USER" as user {
+  * user_id : VARCHAR(36) [PK]
+  --
+  username : VARCHAR(50)
+  password_hash : VARCHAR(255)
+  role_id : VARCHAR(20) [FK]
+}
+
+entity "ASSET" as asset {
+  * asset_id : VARCHAR(36) [PK]
+  --
+  name : VARCHAR(100)
+  ip_address : VARCHAR(45)
+  type : ENUM
+  criticality : ENUM
+  owner_id : VARCHAR(36) [FK]
+}
+
+entity "VULNERABILITY" as vuln {
+  * vuln_id : VARCHAR(36) [PK]
+  --
+  asset_id : VARCHAR(36) [FK]
+  cve_id : VARCHAR(20)
+  title : VARCHAR(200)
+  cvss_score : FLOAT
+  severity : ENUM
+  status : ENUM
+  assigned_to : VARCHAR(36) [FK]
+}
+
+entity "AUDIT_LOG" as audit {
+  * log_id : VARCHAR(36) [PK]
+  --
+  actor_username : VARCHAR(50) [FK]
+  action : VARCHAR(50)
+  target_resource : VARCHAR(100)
+  details_json : TEXT
+  hmac_hash : VARCHAR(64)
+  prev_hash : VARCHAR(64)
+}
+
+user ||--o{ asset : "owns"
+user ||--o{ audit : "generates"
+asset ||--o{ vuln : "contains"
+user ||--o{ vuln : "assigned_to"
+@enduml
+
+
+================================================================================
+2. UML USE CASE DIAGRAM
+================================================================================
+
+--- PLANTUML CODE (Draw.io -> Insert -> Advanced -> PlantUML) ---
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle outline
+
+actor "System Admin" as Admin
+actor "Security Lead" as Lead
+actor "Remediation Engineer" as Eng
+actor "Security Auditor" as Auditor
+
+rectangle "Vulnerability Management Platform" {
+  usecase "Manage Users & Config" as UC_Admin
+  usecase "Register System Asset" as UC_Register
+  usecase "Import CVE Findings" as UC_Import
+  usecase "Calculate CVSS Severity" as UC_CVSS
+  usecase "Override Severity" as UC_Override
+  usecase "Remediate Vulnerability" as UC_Remediate
+  usecase "Update Workflow Status" as UC_UpdateStatus
+  usecase "Verify Fix & Close" as UC_Verify
+  usecase "Inspect HMAC Audit Trail" as UC_Audit
+}
+
+Admin --> UC_Admin
+Lead --> UC_Register
+Lead --> UC_Import
+UC_Import ..> UC_CVSS : <<include>>
+UC_Import ..> UC_Override : <<extend>>
+Eng --> UC_Remediate
+UC_Remediate ..> UC_UpdateStatus : <<include>>
+Lead --> UC_Verify
+Auditor --> UC_Audit
+@enduml
+
+--- MERMAID CODE (Draw.io -> Insert -> Advanced -> Mermaid) ---
+graph LR
+    subgraph Actors
+        Admin[System Admin]
+        Lead[Security Lead]
+        Eng[Remediation Engineer]
+        Auditor[Security Auditor]
+    end
+
+    subgraph Platform [Vulnerability Management Platform]
+        UC1((Manage Users & Config))
+        UC2((Register System Asset))
+        UC3((Import CVE Findings))
+        UC4((Calculate CVSS Severity))
+        UC5((Override Severity))
+        UC6((Remediate Vulnerability))
+        UC7((Update Workflow Status))
+        UC8((Verify Fix & Close))
+        UC9((Inspect HMAC Audit Trail))
+    end
+
+    Admin --> UC1
+    Lead --> UC2
+    Lead --> UC3
+    UC3 -.->|include| UC4
+    UC3 -.->|extend| UC5
+    Eng --> UC6
+    UC6 -.->|include| UC7
+    Lead --> UC8
+    Auditor --> UC9
+
+
+================================================================================
+3. DATA FLOW DIAGRAM - LEVEL 0 (CONTEXT DIAGRAM)
+================================================================================
+
+--- MERMAID CODE (Draw.io -> Insert -> Advanced -> Mermaid) ---
+graph TD
+    subgraph External_Entities [External Entities]
+        A[Security Lead / CVE Scanner]
+        B[Remediation Engineer]
+        C[Security Auditor]
+    end
+
+    subgraph System_Boundary [Vulnerability Management Platform]
+        S((1.0 Vulnerability Platform Core System))
+    end
+
+    subgraph Data_Stores [Data Storage]
+        D1[(D1: Assets & Vulnerabilities Store)]
+        D2[(D2: Immutable HMAC Audit Chain)]
+    end
+
+    A -->|Asset Registration & CVE Ingestion Payload| S
+    B -->|Remediation Status Update Request| S
+    S -->|Assigned Vulnerability Tasks| B
+    C -->|Audit Verification Query| S
+    S -->|Compliance & Audit Reports| C
+    S <-->|Read / Write Operational State| D1
+    S -->|Append Cryptographic HMAC Logs| D2
+
+--- PLANTUML CODE (Draw.io -> Insert -> Advanced -> PlantUML) ---
+@startuml
+skinparam componentStyle rectangle
+
+actor "Security Lead / Scanner" as Lead
+actor "Remediation Engineer" as Eng
+actor "Security Auditor" as Auditor
+
+rectangle "1.0 Vulnerability Platform Core System" as Core
+
+database "D1: Assets & Vulnerabilities Store" as D1
+database "D2: Immutable HMAC Audit Chain Store" as D2
+
+Lead -> Core : Asset Registration & CVE Payload
+Eng -> Core : Remediation Status Update
+Core -> Eng : Task Notifications
+Auditor -> Core : Audit Verification Query
+Core -> Auditor : Compliance Reports
+Core <--> D1 : Read / Write State
+Core -> D2 : Append HMAC Log Entry
+@enduml
+
+
+================================================================================
+4. DATA FLOW DIAGRAM - LEVEL 1 (WITH 4 TRUST BOUNDARIES)
+================================================================================
+
+--- MERMAID CODE (Draw.io -> Insert -> Advanced -> Mermaid) ---
+graph TB
+    subgraph TB1 [TRUST BOUNDARY 1: Untrusted Client Browser]
+        ClientLead[Security Lead Browser]
+        ClientEng[Remediation Engineer Browser]
+        ClientAud[Auditor Browser]
+    end
+
+    subgraph TB2 [TRUST BOUNDARY 2: API Gateway & TLS Termination]
+        P1[1.0 Express API Router & Helmet Security Headers]
+        P2[2.0 JWT AuthN & RBAC Authorization Guard]
+    end
+
+    subgraph TB3 [TRUST BOUNDARY 3: Application Domain Core Engine]
+        P3[3.0 Asset & Vulnerability Management Service]
+        P4[4.0 State Machine Enforced Workflow Engine]
+        P5[5.0 Cryptographic HMAC Audit Logger]
+    end
+
+    subgraph TB4 [TRUST BOUNDARY 4: Secure Data Storage Layer]
+        D1[(D1: Assets & Vulnerabilities Database)]
+        D2[(D2: Immutable HMAC Audit Chain Store)]
+    end
+
+    ClientLead -->|HTTPS Requests + Bearer JWT| P1
+    ClientEng -->|HTTPS Requests + Bearer JWT| P1
+    ClientAud -->|HTTPS Requests + Bearer JWT| P1
+
+    P1 -->|Raw REST Payload| P2
+    P2 -->|Validated User Context| P3
+    P2 -->|Validated User Context| P4
+    P2 -->|Audit Event Action| P5
+
+    P3 -->|Store Assets & Findings| D1
+    P4 -->|Enforce State Machine & Update State| D1
+    P5 -->|Append Hash-Chained Log Record| D2
+
+--- PLANTUML CODE (Draw.io -> Insert -> Advanced -> PlantUML) ---
+@startuml
+package "Trust Boundary 1: Untrusted Client Browser" {
+  [Security Lead Browser] as ClientLead
+  [Remediation Engineer Browser] as ClientEng
+  [Auditor Browser] as ClientAud
+}
+
+package "Trust Boundary 2: API Gateway & Security Headers" {
+  [1.0 Express API Router & Helmet Headers] as P1
+  [2.0 JWT AuthN & RBAC Permission Guard] as P2
+}
+
+package "Trust Boundary 3: Application Core Engine" {
+  [3.0 Asset & Vuln Service] as P3
+  [4.0 Enforced Workflow State Machine] as P4
+  [5.0 HMAC Audit Logger] as P5
+}
+
+package "Trust Boundary 4: Secure Storage Layer" {
+  database "D1: Assets & Vulns DB" as D1
+  database "D2: HMAC Audit Store" as D2
+}
+
+ClientLead --> P1 : HTTPS / JSON + JWT
+ClientEng --> P1 : HTTPS / JSON + JWT
+ClientAud --> P1 : HTTPS / JSON + JWT
+
+P1 --> P2 : Raw Payload
+P2 --> P3 : Validated Context
+P2 --> P4 : Validated Context
+P2 --> P5 : Audit Action
+
+P3 --> D1 : Write Asset/Vuln
+P4 --> D1 : Validate & Update State
+P5 --> D2 : Append Chained Hash
+@enduml
+
+
+================================================================================
+5. DATA FLOW DIAGRAM - LEVEL 2 (DECOMPOSITION OF PROCESS 4.0 WORKFLOW ENGINE)
+================================================================================
+
+--- MERMAID CODE (Draw.io -> Insert -> Advanced -> Mermaid) ---
+graph TD
+    subgraph DFD_Level_2 [Process 4.0: Enforced Workflow State Machine Engine]
+        Req[Incoming Workflow Transition Request] --> P4_1[4.1 Transition Rule Validator]
+        
+        P4_1 -->|Allowed Transition Path| P4_2[4.2 Baseline CVSS & Severity Evaluator]
+        P4_1 -->|Illegal Transition Path| Err[Return HTTP 400 Workflow Integrity Error]
+        
+        P4_2 --> P4_3[4.3 State Persistence Engine]
+        P4_3 --> D1[(D1: Assets & Vulnerabilities Store)]
+        
+        P4_3 --> P4_4[4.4 Cryptographic Audit Event Trigger]
+        P4_4 --> D2[(D2: Immutable HMAC Audit Chain Store)]
+    end
+
+--- PLANTUML CODE (Draw.io -> Insert -> Advanced -> PlantUML) ---
+@startuml
+rectangle "Process 4.0: Enforced Workflow State Machine Engine" {
+  [Incoming Transition Request] as Req
+  [4.1 Transition Rule Validator] as P4_1
+  [4.2 Baseline CVSS & Severity Evaluator] as P4_2
+  [4.3 State Persistence Engine] as P4_3
+  [4.4 Cryptographic Audit Event Trigger] as P4_4
+  [HTTP 400 Workflow Error] as Err
+}
+
+database "D1: Vulnerabilities DB" as D1
+database "D2: HMAC Audit Chain" as D2
+
+Req --> P4_1
+P4_1 --> P4_2 : Valid Path
+P4_1 --> Err : Illegal Transition Path
+P4_2 --> P4_3
+P4_3 --> D1 : Save Updated State
+P4_3 --> P4_4 : Trigger Audit Event
+P4_4 --> D2 : Write Chained HMAC Hash
+@enduml
+
+
+================================================================================
+6. SOFTWARE ARCHITECTURE DIAGRAM (LAYERED CLEAN ARCHITECTURE)
+================================================================================
+
+--- MERMAID CODE (Draw.io -> Insert -> Advanced -> Mermaid) ---
+graph TD
+    subgraph Layer1 [Layer 1: Presentation Layer]
+        UI[Single-Page Web Application\nHTML5 / Vanilla CSS Glassmorphism]
+    end
+
+    subgraph Layer2 [Layer 2: Security Gateway Layer]
+        GW[Express API Gateway\nHelmet Security Headers / Rate Limiting / CORS]
+    end
+
+    subgraph Layer3 [Layer 3: Authentication & Authorization Layer]
+        AUTH[JWT Middleware & RBAC Permission Guards]
+    end
+
+    subgraph Layer4 [Layer 4: Business Domain Core Layer]
+        AM[Asset Manager]
+        WE[State Machine Workflow Engine]
+        CVSS[CVSS Scoring Engine]
+    end
+
+    subgraph Layer5 [Layer 5: Data & Cryptographic Audit Storage Layer]
+        DB[(Assets & Vulnerabilities Database)]
+        AUDIT[(Cryptographic HMAC Chained Audit Log)]
+    end
+
+    UI -->|HTTPS REST APIs / JSON| GW
+    GW --> AUTH
+    AUTH --> AM
+    AUTH --> WE
+    AUTH --> CVSS
+    AM --> DB
+    WE --> DB
+    WE --> AUDIT
+    CVSS --> WE
+
+--- PLANTUML CODE (Draw.io -> Insert -> Advanced -> PlantUML) ---
+@startuml
+package "Layer 1: Presentation Layer" {
+  [Single-Page Web Application (HTML5 / Glassmorphism)] as UI
+}
+
+package "Layer 2: Security Gateway Layer" {
+  [Express API Router & Helmet Security Headers] as GW
+}
+
+package "Layer 3: AuthN & AuthZ Layer" {
+  [JWT AuthN Middleware & RBAC Guards] as AUTH
+}
+
+package "Layer 4: Business Domain Core" {
+  [Asset Manager] as AM
+  [State Machine Workflow Engine] as WE
+  [CVSS Risk Scoring Engine] as CVSS
+}
+
+package "Layer 5: Data & Audit Storage Layer" {
+  database "Assets & Vulnerabilities DB" as DB
+  database "Cryptographic HMAC Audit Store" as AUDIT
+}
+
+UI --> GW : HTTPS REST APIs
+GW --> AUTH
+AUTH --> AM
+AUTH --> WE
+AUTH --> CVSS
+AM --> DB
+WE --> DB
+WE --> AUDIT
+CVSS --> WE
+@enduml
+================================================================================

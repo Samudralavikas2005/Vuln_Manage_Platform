@@ -17,6 +17,12 @@
       </svg>
       Vulnerability Management Platform
     </div>
+
+    <div class="db-badges">
+      <span class="badge badge-secondary" style="font-size: 0.7rem;">DB1: SQLite (Assets & Vulns)</span>
+      <span class="badge badge-secondary" style="font-size: 0.7rem;">DB2: SQLite (HMAC Audit Trail)</span>
+    </div>
+
     <div class="user-badge">
       <span id="headerUserName">Lead Security Analyst</span>
       <span id="headerUserRole" class="role-pill">SECURITY_LEAD</span>
@@ -26,10 +32,7 @@
 
   <!-- NAVIGATION TABS -->
   <nav id="mainNav" class="nav-tabs hidden">
-    <button class="nav-btn active" onclick="switchTab('dashboardTab')">Dashboard & Assets</button>
-    <button class="nav-btn" onclick="switchTab('vulnerabilitiesTab')">Vulnerabilities & Workflow</button>
-    <button class="nav-btn" onclick="switchTab('managementTab')">Security Lead Management</button>
-    <button class="nav-btn" onclick="switchTab('auditTab')">Audit Trail & Integrity</button>
+    <!-- Dynamically rendered per Role in app.js -->
   </nav>
 
   <!-- LOGIN SECTION (View 1) -->
@@ -67,7 +70,7 @@
   <!-- MAIN CONTAINER -->
   <main id="appContainer" class="container hidden">
 
-    <!-- TAB 1: DASHBOARD & ASSETS (View 2) -->
+    <!-- TAB 1: DASHBOARD & ASSETS -->
     <section id="dashboardTab" class="tab-content">
       <div class="grid-metrics">
         <div class="glass-panel metric-card">
@@ -89,7 +92,7 @@
       </div>
 
       <div class="glass-panel" style="padding: 1.5rem;">
-        <h3 style="margin-bottom: 1rem;">Registered Infrastructure Assets</h3>
+        <h3 style="margin-bottom: 1rem;">Registered Infrastructure Assets (DB1 Store)</h3>
         <div class="table-container">
           <table>
             <thead>
@@ -111,10 +114,40 @@
       </div>
     </section>
 
-    <!-- TAB 2: VULNERABILITIES & WORKFLOW -->
+    <!-- TAB 2: REMEDIATION ENGINEER WORKSTATION (Dedicated view for REMEDIATION_ENGINEER) -->
+    <section id="remediationTab" class="tab-content hidden">
+      <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
+        <h3 style="margin-bottom: 0.5rem;">🛠️ Remediation Engineer Workstation</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+          Select active vulnerabilities assigned to your team, begin patching, and submit fix verification notes for Security Lead approval.
+        </p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Vuln ID</th>
+                <th>CVE ID</th>
+                <th>Title</th>
+                <th>Asset ID</th>
+                <th>Severity</th>
+                <th>Current Status</th>
+                <th>Remediation Notes</th>
+                <th>Engineer Workflow Transition</th>
+              </tr>
+            </thead>
+            <tbody id="remediationTableBody">
+              <!-- JS Populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: VULNERABILITIES & WORKFLOW (For Sec Lead / Admin / Auditor) -->
     <section id="vulnerabilitiesTab" class="tab-content hidden">
       <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
-        <h3 style="margin-bottom: 1rem;">Vulnerability Tracking & Workflow State Engine</h3>
+        <h3 style="margin-bottom: 1rem;">Vulnerability Tracking & State Engine (DB1 Store)</h3>
         <div class="table-container">
           <table>
             <thead>
@@ -126,7 +159,7 @@
                 <th>Severity</th>
                 <th>Assigned Team</th>
                 <th>Workflow State</th>
-                <th>Actions</th>
+                <th>Security Lead Actions</th>
               </tr>
             </thead>
             <tbody id="vulnsTableBody">
@@ -137,7 +170,7 @@
       </div>
     </section>
 
-    <!-- TAB 3: SECURITY LEAD MANAGEMENT (View 3) -->
+    <!-- TAB 4: SECURITY LEAD MANAGEMENT (For Sec Lead & Admin only) -->
     <section id="managementTab" class="tab-content hidden">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
         
@@ -172,7 +205,7 @@
                 <option value="CRITICAL">CRITICAL</option>
               </select>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Register Asset</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Register Asset to DB1</button>
           </form>
         </div>
 
@@ -202,18 +235,18 @@
               <label>Scanner Source</label>
               <input type="text" id="importScanner" required value="OpenVAS Scanner v12">
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Import Finding</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Import Finding to DB1</button>
           </form>
         </div>
 
       </div>
     </section>
 
-    <!-- TAB 4: AUDIT TRAIL & INTEGRITY (View 4) -->
+    <!-- TAB 5: AUDIT TRAIL & INTEGRITY (For Auditor, Sec Lead, Admin) -->
     <section id="auditTab" class="tab-content hidden">
       <div class="glass-panel" style="padding: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h3>Cryptographically Chained Audit Log (Tamper-Evident)</h3>
+          <h3>Cryptographically Chained Audit Log (DB2 SQLite Store)</h3>
           <span id="auditVerificationBadge" class="badge badge-low">HMAC Chain Verified</span>
         </div>
         <div class="table-container">
@@ -240,7 +273,7 @@
   </main>
 
   <footer>
-    <p>Secure Software Engineering End Lab | Vulnerability Management Platform (SSDLC)</p>
+    <p>Secure Software Engineering End Lab | Vulnerability Management Platform (DB1: SQLite | DB2: SQLite HMAC Chain)</p>
   </footer>
 
   <script src="app.js"></script>

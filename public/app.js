@@ -1,5 +1,5 @@
 /**
- * Client-Side JavaScript Logic for Vulnerability Management Platform
+ * Client-Side JavaScript Logic with Dynamic Role-Based UI Rendering
  */
 
 let authToken = localStorage.getItem('token') || '';
@@ -70,17 +70,59 @@ function showAuthenticatedUI() {
   document.getElementById('headerUserName').textContent = currentUser.name;
   document.getElementById('headerUserRole').textContent = currentUser.role;
 
-  loadDashboard();
+  renderNavigationTabs();
 }
 
-function switchTab(tabId) {
+function renderNavigationTabs() {
+  const nav = document.getElementById('mainNav');
+  const role = currentUser.role;
+
+  let tabsHTML = '';
+
+  if (role === 'REMEDIATION_ENGINEER') {
+    tabsHTML = `
+      <button class="nav-btn active" onclick="switchTab('remediationTab', event)">🛠️ Remediation Workstation</button>
+      <button class="nav-btn" onclick="switchTab('dashboardTab', event)">Infrastructure Assets (DB1)</button>
+    `;
+  } else if (role === 'SECURITY_LEAD' || role === 'SYSTEM_ADMIN') {
+    tabsHTML = `
+      <button class="nav-btn active" onclick="switchTab('dashboardTab', event)">Dashboard & Assets</button>
+      <button class="nav-btn" onclick="switchTab('vulnerabilitiesTab', event)">Vulnerabilities & Workflow</button>
+      <button class="nav-btn" onclick="switchTab('managementTab', event)">Security Lead Management</button>
+      <button class="nav-btn" onclick="switchTab('auditTab', event)">Audit Trail & Integrity (DB2)</button>
+    `;
+  } else if (role === 'SECURITY_AUDITOR') {
+    tabsHTML = `
+      <button class="nav-btn active" onclick="switchTab('dashboardTab', event)">Dashboard & Assets</button>
+      <button class="nav-btn" onclick="switchTab('vulnerabilitiesTab', event)">Vulnerabilities Tracking</button>
+      <button class="nav-btn" onclick="switchTab('auditTab', event)">Cryptographic Audit Trail (DB2)</button>
+    `;
+  }
+
+  nav.innerHTML = tabsHTML;
+
+  // Auto load first tab
+  if (role === 'REMEDIATION_ENGINEER') {
+    switchTab('remediationTab');
+  } else {
+    switchTab('dashboardTab');
+  }
+}
+
+function switchTab(tabId, evt) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
 
   document.getElementById(tabId).classList.remove('hidden');
-  event.target.classList.add('active');
+  if (evt && evt.target) {
+    evt.target.classList.add('active');
+  } else {
+    const activeBtn = document.querySelector(`.nav-btn[onclick*="${tabId}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+  }
 
   if (tabId === 'dashboardTab') loadDashboard();
+  if (tabId === 'remediationTab') loadRemediationWorkstation();
   if (tabId === 'vulnerabilitiesTab') loadVulnerabilities();
   if (tabId === 'managementTab') loadManagementView();
   if (tabId === 'auditTab') loadAuditLogs();
@@ -124,6 +166,76 @@ async function loadDashboard() {
   }
 }
 
+/**
+ * Dedicated Remediation Workstation View for Remediation Engineers
+ */
+async function loadRemediationWorkstation() {
+  try {
+    const vulns = await fetchAPI('/api/vulnerabilities');
+    const tbody = document.getElementById('remediationTableBody');
+
+    if (vulns.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No assigned vulnerabilities found in DB1.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = vulns.map(v => `
+      <tr>
+        <td><strong>${v.id}</strong></td>
+        <td><code>${v.cveId}</code></td>
+        <td>${v.title}</td>
+        <td>${v.assetId}</td>
+        <td><span class="badge badge-${v.severity.toLowerCase()}">${v.severity}</span></td>
+        <td><span class="badge badge-secondary">${v.status}</span></td>
+        <td><small>${v.remediationNotes || '<em>No notes yet</em>'}</small></td>
+        <td>
+          ${renderEngineerWorkflowActions(v)}
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function renderEngineerWorkflowActions(v) {
+  if (v.status === 'ASSIGNED' || v.status === 'VULNERABILITY_IMPORTED' || v.status === 'RISK_ASSESSED') {
+    return `<button class="btn btn-primary" onclick="transitionEngineerView('${v.id}', 'REMEDIATION_IN_PROGRESS')">▶ Start Remediation</button>`;
+  }
+  if (v.status === 'REMEDIATION_IN_PROGRESS') {
+    return `<button class="btn btn-primary" style="background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));" onclick="transitionEngineerView('${v.id}', 'VERIFICATION_PENDING')">✔ Submit Patch for Verification</button>`;
+  }
+  if (v.status === 'VERIFICATION_PENDING') {
+    return `<span class="badge badge-medium">⏳ Pending Security Lead Verification</span>`;
+  }
+  if (v.status === 'CLOSED') {
+    return `<span class="badge badge-low">✅ Fix Verified & Closed</span>`;
+  }
+  return `<span style="color: var(--text-muted); font-size: 0.8rem;">State: ${v.status}</span>`;
+}
+
+async function transitionEngineerView(vulnId, targetState) {
+  let notes = '';
+  if (targetState === 'VERIFICATION_PENDING') {
+    notes = prompt(`Enter remediation patch details for ${vulnId} (e.g. "Applied vendor patch v2.4.1 to nginx config"):`);
+    if (notes === null || notes.trim() === '') {
+      alert('Remediation notes are required to submit a patch for verification.');
+      return;
+    }
+  }
+
+  try {
+    await fetchAPI('/api/vulnerabilities/transition', {
+      method: 'PATCH',
+      body: JSON.stringify({ vulnerabilityId: vulnId, targetState, remediationNotes: notes })
+    });
+    alert(`Success: Workflow transition to '${targetState}' saved to DB1 and logged to DB2!`);
+    loadRemediationWorkstation();
+  } catch (err) {
+    alert(`Transition Blocked: ${err.message}`);
+  }
+}
+
 async function loadVulnerabilities() {
   try {
     const vulns = await fetchAPI('/api/vulnerabilities');
@@ -139,7 +251,7 @@ async function loadVulnerabilities() {
         <td>${v.assignedTeam}</td>
         <td><span class="badge badge-secondary">${v.status}</span></td>
         <td>
-          ${renderActions(v)}
+          ${renderSecLeadActions(v)}
         </td>
       </tr>
     `).join('');
@@ -148,28 +260,49 @@ async function loadVulnerabilities() {
   }
 }
 
-function renderActions(v) {
-  if (v.status === 'VERIFICATION_PENDING' && (currentUser.role === 'SECURITY_LEAD' || currentUser.role === 'SYSTEM_ADMIN')) {
-    return `<button class="btn btn-primary" onclick="transitionVuln('${v.id}', 'CLOSED')">Verify & Close Fix</button>`;
+function renderSecLeadActions(v) {
+  if (currentUser.role !== 'SECURITY_LEAD' && currentUser.role !== 'SYSTEM_ADMIN') {
+    return `<span style="color: var(--text-muted); font-size: 0.8rem;">Read-only view</span>`;
   }
-  if (v.status === 'ASSIGNED' || v.status === 'REMEDIATION_IN_PROGRESS') {
-    return `<button class="btn btn-secondary" onclick="transitionVuln('${v.id}', 'VERIFICATION_PENDING')">Mark Fix Ready</button>`;
+  if (v.status === 'VERIFICATION_PENDING') {
+    return `<button class="btn btn-primary" onclick="secLeadCloseFix('${v.id}')">Approve & Close Fix</button>`;
   }
-  return `<span style="color: var(--text-muted); font-size: 0.8rem;">No actions</span>`;
+  if (v.status === 'VULNERABILITY_IMPORTED') {
+    return `<button class="btn btn-secondary" onclick="secLeadAdjustSeverity('${v.id}')">Assess Severity</button>`;
+  }
+  return `<span style="color: var(--text-muted); font-size: 0.8rem;">Active Workflow</span>`;
 }
 
-async function transitionVuln(vulnId, targetState) {
-  const notes = prompt(`Enter remediation verification notes for transitioning ${vulnId} to ${targetState}:`);
+async function secLeadCloseFix(vulnId) {
+  const notes = prompt(`Confirm verification results for closing ${vulnId}:`, 'Re-scanned asset with OpenVAS, zero vulnerabilities detected.');
   if (notes === null) return;
   try {
     await fetchAPI('/api/vulnerabilities/transition', {
       method: 'PATCH',
-      body: JSON.stringify({ vulnerabilityId: vulnId, targetState, remediationNotes: notes })
+      body: JSON.stringify({ vulnerabilityId: vulnId, targetState: 'CLOSED', remediationNotes: notes })
     });
-    alert(`Success: Vulnerability ${vulnId} state updated to ${targetState}`);
+    alert(`Success: Vulnerability ${vulnId} closed in DB1 and audit logged in DB2.`);
     loadVulnerabilities();
   } catch (err) {
-    alert(`Transition Error: ${err.message}`);
+    alert(`Close Error: ${err.message}`);
+  }
+}
+
+async function secLeadAdjustSeverity(vulnId) {
+  const severity = prompt(`Select new severity (LOW, MEDIUM, HIGH, CRITICAL):`, 'HIGH');
+  if (!severity) return;
+  const justification = prompt(`Enter mandatory severity adjustment justification:`, 'Adjusted based on internal network isolation.');
+  if (!justification) return;
+
+  try {
+    await fetchAPI('/api/vulnerabilities/severity', {
+      method: 'PATCH',
+      body: JSON.stringify({ vulnerabilityId: vulnId, assignedSeverity: severity.toUpperCase(), justification })
+    });
+    alert('Severity successfully updated in DB1!');
+    loadVulnerabilities();
+  } catch (err) {
+    alert(`Severity Update Failed: ${err.message}`);
   }
 }
 
@@ -195,7 +328,7 @@ async function handleRegisterAsset(e) {
 
   try {
     await fetchAPI('/api/assets', { method: 'POST', body: JSON.stringify(payload) });
-    alert('Asset successfully registered and logged!');
+    alert('Asset successfully registered into DB1 SQLite database!');
     document.getElementById('registerAssetForm').reset();
     loadDashboard();
   } catch (err) {
@@ -216,7 +349,7 @@ async function handleImportVuln(e) {
 
   try {
     await fetchAPI('/api/vulnerabilities/import', { method: 'POST', body: JSON.stringify(payload) });
-    alert('Vulnerability finding successfully imported!');
+    alert('Vulnerability finding successfully saved to DB1 SQLite database!');
     document.getElementById('importVulnForm').reset();
     loadVulnerabilities();
   } catch (err) {
@@ -231,14 +364,14 @@ async function loadAuditLogs() {
 
     const badge = document.getElementById('auditVerificationBadge');
     if (data.integrityStatus.intact) {
-      badge.textContent = `HMAC Chain Intact (${data.integrityStatus.count} logs verified)`;
+      badge.textContent = `HMAC Chain Intact (${data.integrityStatus.count} logs verified in DB2)`;
       badge.className = 'badge badge-low';
     } else {
       badge.textContent = `CHAIN TAMPERED! Broken at index ${data.integrityStatus.brokenIndex}`;
       badge.className = 'badge badge-critical';
     }
 
-    tbody.innerHTML = data.logs.slice().reverse().map(l => `
+    tbody.innerHTML = data.logs.map(l => `
       <tr>
         <td><code>${l.logId}</code></td>
         <td>${new Date(l.timestamp).toLocaleTimeString()}</td>
