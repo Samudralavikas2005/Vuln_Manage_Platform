@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vuln-platform-deployment
+  namespace: secops-vulnerability
+  labels:
+    app: vuln-platform
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vuln-platform
+  template:
+    metadata:
+      labels:
+        app: vuln-platform
+    spec:
+      # Kubernetes Security Control 1: Non-Root Pod Security Context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: vuln-platform-container
+          image: vuln-platform:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          
+          # Kubernetes Security Control 2: Container Security Context
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+          # Resource Limits preventing DoS
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+
+          # Health Probes
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          # Secret Injection via K8s Environment Variables
+          envFrom:
+            - secretRef:
+                name: vuln-platform-secrets
